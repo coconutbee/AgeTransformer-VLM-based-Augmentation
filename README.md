@@ -60,7 +60,6 @@ pip install -r requirements.txt  # file will be added with the code release
 ### Directory Layout (expected)
 ```
 AgeTransformer-VLM-based-Augmentation/
-|-- configs/            # YAML configs for MoE, data pipelines, and training
 |-- data/               # Place downloaded datasets here (see instructions below)
 |-- moe_age_estimator/  # Ensemble inference utilities and checkpoints
 |-- src/                # AgeTransformer models, trainers, evaluators
@@ -70,15 +69,15 @@ AgeTransformer-VLM-based-Augmentation/
 
 ## Data Preparation
 ### FFHQ-Aging Relabeling
-- Place original FFHQ-Aging images under `data/raw/ffhq_aging/`.
+- Place our balanced & relabeled FFHQ-Aging images under `data/train_128_balance`.
 - Run the MoE estimator to produce a new `ffhq_aging_moe_labels.json` containing mean age, per-expert predictions, and confidence scores.
 - Filter subjects using the provided reliability thresholds (for example, discard samples where expert variance exceeds configurable bounds).
 - Export summary statistics (`stats/ffhq_aging_moe_report.csv`) to track age distribution balance.
 
 ### CAF Enhancement
-- Place the raw CAF dataset under `data/raw/caf/`.
-- Apply DDColor for color restoration followed by ESRGAN for super-resolution; scripts will output to `data/processed/caf_enhanced/`.
-- Keep sidecar metadata linking enhanced images back to originals for auditing and ablation studies.
+- The raw CAF dataset can download from our [cloud](http://www.vision.caltech.edu/datasets/caf/).
+- Apply [DDColor](https://github.com/piddnad/DDColor.git) for color restoration followed by [ESRGAN](https://github.com/TencentARC/GFPGAN.git) for super-resolution; If you want to download the enhanced data directly you can find it by the [link](http://www.vision.caltech.edu/datasets/caf/).
+
 
 ## MoE Age Estimator
 - Experts: Janus-Pro (VLM-augmented), MiVOLO, ResNet50, VGG16.
