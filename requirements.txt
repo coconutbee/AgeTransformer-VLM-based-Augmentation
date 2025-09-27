@@ -1,0 +1,7 @@
+# requirements.txt
+certifi
+tqdm
+timm
+ninja
+lmdb
+pytorch_lightning
