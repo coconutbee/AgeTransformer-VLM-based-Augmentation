@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-import net
+import module.net as net
 import os
 
 def load_adaface_backbone(architecture: str = "ir_50",

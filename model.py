@@ -10,7 +10,7 @@ from timm.models.layers import to_2tuple, trunc_normal_
 from torch.autograd import Function
 import torch.utils.checkpoint as checkpoint
 
-from op import FusedLeakyReLU, fused_leaky_relu, upfirdn2d
+from module.op import FusedLeakyReLU, fused_leaky_relu, upfirdn2d
 from models.basic_layers import (EqualLinear, PixelNorm,
                                  SinusoidalPositionalEmbedding, Upsample)
 

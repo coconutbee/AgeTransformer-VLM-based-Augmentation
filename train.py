@@ -11,8 +11,8 @@ import torch.distributed as dist
 from torchvision import transforms, utils
 from tqdm import tqdm
 from torch.nn.functional import l1_loss
-from adaface_load import load_adaface_backbone, encode_with_adaface
-from perceptual_loss import PerceptualLoss
+from module.adaface_load import load_adaface_backbone, encode_with_adaface
+from module.perceptual_loss import PerceptualLoss
 try:
     import wandb
 
@@ -20,8 +20,8 @@ except ImportError:
     wandb = None
 from torch.optim.lr_scheduler import LambdaLR
 from model import Generator, Discriminator
-from dataset import MultiResolutionDataset
-from distributed import (
+from module.dataset import MultiResolutionDataset
+from module.distributed import (
     get_rank,
     synchronize,
     reduce_loss_dict,
