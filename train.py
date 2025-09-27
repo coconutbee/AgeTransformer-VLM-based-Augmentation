@@ -323,8 +323,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--train_path', type=str, default="../train_128_balance")
-    parser.add_argument('--val_path', type=str, default="../val_128_relabel_ori")
+    parser.add_argument('--train_path', type=str, default="./data/train_128_balance")
+    parser.add_argument('--val_path', type=str, default="./data/val_128_relabel_ori")
     parser.add_argument('--iter', type=int, default=600000)
     parser.add_argument('--batch', type=int, default=2)
     parser.add_argument('--n_sample', type=int, default=8)

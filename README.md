@@ -51,8 +51,9 @@ CAF dataset --> DDColor --> ESRGAN --> Enhanced faces -->
 
 ### Environment Setup Example
 ```bash
-conda create -n agetrans python=3.10
-conda activate agetrans
+conda create -n atf python=3.10
+conda activate atf
+pip3 install torch torchvision # install the correct version from pytorch.org
 pip install -r requirements.txt  # file will be added with the code release
 ```
 
