@@ -13,13 +13,6 @@
 - CAF dataset is color- and texture-enhanced via DDColor + ESRGAN for sharper supervision.
 - End-to-end recipes for inference demos, evaluation, and full training are included.
 
-## Repository Roadmap
-- [x] Project README and high-level documentation.
-- [ ] Release MoE age estimator checkpoints and inference scripts.
-- [x] Publish FFHQ-Aging relabeled data and statistics.
-- [ ] Publish CAF enhanced dataset splits and metadata.
-- [x] Release AgeTransformer training/inference source code.
-- [ ] Upload pretrained AgeTransformer weights and demo notebooks.
 
 ## Pipeline at a Glance
 ```
