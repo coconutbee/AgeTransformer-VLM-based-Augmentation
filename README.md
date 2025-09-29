@@ -16,9 +16,9 @@
 ## Repository Roadmap
 - [x] Project README and high-level documentation.
 - [ ] Release MoE age estimator checkpoints and inference scripts.
-- [ ] Publish FFHQ-Aging relabeled metadata and statistics.
+- [x] Publish FFHQ-Aging relabeled data and statistics.
 - [ ] Publish CAF enhanced dataset splits and metadata.
-- [ ] Release AgeTransformer training/inference source code.
+- [x] Release AgeTransformer training/inference source code.
 - [ ] Upload pretrained AgeTransformer weights and demo notebooks.
 
 ## Pipeline at a Glance
