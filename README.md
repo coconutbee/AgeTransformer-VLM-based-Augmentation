@@ -89,17 +89,12 @@ AgeTransformer-VLM-based-Augmentation/
 
 ## MoE Age Estimator
 - Experts: Janus-Pro (VLM-augmented), MiVOLO, ResNet50[(our previous work)](https://link.springer.com/chapter/10.1007/978-3-030-89131-2_27), VGG16[(our previous work)](https://www.ecva.net/papers/eccv_2022/papers_ECCV/papers/136720573.pdf).
-- Weighted aggregation uses temperature-scaled confidences `w_i = softmax((c_i - mu)/tau)`.
-- Final prediction is `age = sum_i(w_i * age_i)`; variance is tracked for filtering and curriculum scheduling.
+- Weighted aggregation uses gating scores with softmax normalization `w_i = softmax(g_i)`.
+- Final prediction is `age = sum_i(w_i * age_i)`.
 - Provides both CLI (`python moe_age_estimator/infer.py --input ...`) and batch API integration for dataset relabeling.
-- Calibration metrics (MAE, EMD, reliability diagrams) are logged for transparency.
 
 ## AgeTransformer Training
-1. Build training manifest that pairs each face with its MoE age label and optional CAF-enhanced counterpart.
-2. Configure age anchors in `configs/age_anchors.yaml` to control the ten output bins.
-3. Launch training with distributed support, for example `python -m torch.distributed.run --nproc_per_node=4 src/train.py --config configs/age_transformer_base.yaml`.
-4. Enable VLM guidance (Janus-Pro captions / embeddings) by pointing to the caption cache inside the config.
-5. Monitor training via TensorBoard and validation scripts (`src/eval_age_consistency.py`).
+1. Launch training, for example `python train.py`.
 
 ## Inference & Evaluation
 - Use `src/infer.py` to generate ten age-shifted images from a single input; specify `--ages` to override default anchors.

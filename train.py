@@ -340,7 +340,7 @@ if __name__ == '__main__':
     parser.add_argument('--wandb', default=False, action='store_true')
     parser.add_argument('--wandb_project', type=str, default='Agetransformer_github')
     parser.add_argument('--local_rank', type=int, default=0)
-    parser.add_argument("-n", "--name", type=str, required=True, help="experiment name")
+    parser.add_argument("-n", "--name", type=str, default="agetransformer", help="experiment name")
     parser.add_argument('--resume', action='store_true', default=False, help="from last checkpoint")
     parser.add_argument('--ckpt', type=str, default=None)
 
@@ -446,3 +446,4 @@ if __name__ == '__main__':
         wandb.login(key="YOUR_WANDB_KEY")
         wandb.init(project=args.wandb_project, name=args.name)
     train(args, train_loader, val_loader, generator, discriminator, g_optim, d_optim, g_ema, device)
+
