@@ -34,9 +34,9 @@ CAF dataset --> DDColor --> ESRGAN --> Enhanced faces -->
 | Artifact | Description | Availability |
 | --- | --- | --- |
 | MoE Age Estimator | Ensemble scripts + weights (Janus-Pro, MiVOLO, ResNet50, VGG16 fusion). | Releases (coming soon) |
-| FFHQ-Aging Relabeled | Metadata `.json` / `.csv`, reliability scores, quality flags. | Releases (coming soon) |
+| FFHQ-Aging Relabeled | FFHQ-Aging relabeled training data | Finished |
 | CAF-Enhanced Dataset | DDColor + ESRGAN processed images paired with original metadata. | Releases (coming soon) |
-| AgeTransformer Training Code | Data loaders, trainer, configs, VLM guidance modules. | `src/` directory (coming soon) |
+| AgeTransformer Training Code | Whole agetransformer training code. | Finished |
 | Pretrained AgeTransformer | Checkpoints ready for inference + demo notebooks. | Releases (coming soon) |
 
 ## Getting Started
