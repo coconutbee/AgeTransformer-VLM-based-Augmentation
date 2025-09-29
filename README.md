@@ -1,7 +1,6 @@
 ﻿# AgeTransformer-VLM-based-Augmentation
 
-> zh: AgeTransformer-VLM-based-Augmentation 以我提出的 AgeTransformer 架構為核心，整合視覺語言模型與資料增強流程，建立可一次輸出十種年齡轉換結果的年齡變換器。
-> en: AgeTransformer-VLM-based-Augmentation builds on the proposed AgeTransformer architecture to produce ten age-conditioned renderings per input face, pairing MoE-based relabeling with enhanced training data.
+> AgeTransformer-VLM-based-Augmentation builds on the proposed AgeTransformer architecture to produce ten age-conditioned renderings per input face, pairing MoE-based relabeling with enhanced training data.
 
 ## Overview
 - Supplies ready-to-train AgeTransformer code plus curated datasets so researchers can reproduce and improve age translation.
