@@ -7,7 +7,7 @@
 - Offers pretrained AgeTransformer checkpoints to validate performance out-of-the-box and a pipeline to fine-tune on custom data.
 
 ## Highlights
-- AgeTransformer backbone delivers ten discrete age anchors (configurable default: 5, 15, 25, 35, 45, 55, 65, 75, 85, 95 years).
+- AgeTransformer backbone delivers ten discrete age anchors.
 - Vision-language guidance stabilizes identity preservation while steering semantic age cues.
 - Mixture-of-Experts age estimator recalibrates FFHQ-Aging with ensemble uncertainty handling.
 - CAF dataset is color- and texture-enhanced via DDColor + ESRGAN for sharper supervision.
