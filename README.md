@@ -43,12 +43,22 @@ CAF dataset --> DDColor --> ESRGAN --> Enhanced faces -->
 | Pretrained AgeTransformer | Checkpoints ready for inference + demo notebooks. | Releases (coming soon) |
 
 ## Getting Started
-1. Clone the repository and pull the latest release assets.
-2. Create a Python 3.10+ environment (Conda or venv) and install PyTorch with CUDA support that matches your GPU.
-3. Install project dependencies (a consolidated `requirements.txt` / `environment.yml` will ship with the code release).
+1. Clone the repository.
+```bash
+git clone https://github.com/coconutbee/AgeTransformer-VLM-based-Augmentation.git
+```
+2. Create a Python 3.10+ environment and install PyTorch with CUDA support that matches your GPU.
+```bash
+conda create -n atf python=3.10
+conda activate atf
+pip3 install torch torchvision # install the correct version from pytorch.org
+```
+3. Install project dependencies.
+```bash
+pip install -r requirements.txt
+```
 4. Download the MoE estimator, relabeled FFHQ-Aging metadata, CAF-enhanced data, and pretrained checkpoints from the Releases page.
-5. Configure dataset paths inside `configs/project.yaml` (to be provided) before running training or inference.
-
+5. 
 ### Environment Setup Example
 ```bash
 conda create -n atf python=3.10
@@ -62,25 +72,23 @@ pip install -r requirements.txt  # file will be added with the code release
 AgeTransformer-VLM-based-Augmentation/
 |-- data/               # Place downloaded datasets here (see instructions below)
 |-- moe_age_estimator/  # Ensemble inference utilities and checkpoints
-|-- src/                # AgeTransformer models, trainers, evaluators
-|-- tools/              # Helper scripts for preprocessing and visualization
+|-- module/             # AgeTransformer functions
 `-- README.md
 ```
 
 ## Data Preparation
 ### FFHQ-Aging Relabeling
-- Place our balanced & relabeled FFHQ-Aging images under `data/train_128_balance`.
-- Run the MoE estimator to produce a new `ffhq_aging_moe_labels.json` containing mean age, per-expert predictions, and confidence scores.
-- Filter subjects using the provided reliability thresholds (for example, discard samples where expert variance exceeds configurable bounds).
-- Export summary statistics (`stats/ffhq_aging_moe_report.csv`) to track age distribution balance.
+- Place our balanced & relabeled FFHQ-Aging [training_data](https://mega.nz/folder/SUM1GADC#4APMLfB6qQFPbDbK4kXgCw) and [validation_data](https://mega.nz/folder/2I8kUJID#oyv5ckiiJV3knq_ktZqIPg) images under `data/`.
 
 ### CAF Enhancement
 - The raw CAF dataset can download from our [cloud](http://www.vision.caltech.edu/datasets/caf/).
 - Apply [DDColor](https://github.com/piddnad/DDColor.git) for color restoration followed by [ESRGAN](https://github.com/TencentARC/GFPGAN.git) for super-resolution; If you want to download the enhanced data directly you can find it by the [link](http://www.vision.caltech.edu/datasets/caf/).
 
+### Checkpoints
+- Download the MoE age estimator[(link)](https://mega.nz/file/2U8lxRKJ#Z2KczVkP72AnvNawfK8tAGeNZknqrack3VGjbZZC6zM) and AgeTransformer pretrained weights from the Releases page and place them under `models/` directory.
 
 ## MoE Age Estimator
-- Experts: Janus-Pro (VLM-augmented), MiVOLO, ResNet50, VGG16.
+- Experts: Janus-Pro (VLM-augmented), MiVOLO, ResNet50[(our previous work)](https://link.springer.com/chapter/10.1007/978-3-030-89131-2_27), VGG16[(our previous work)](https://www.ecva.net/papers/eccv_2022/papers_ECCV/papers/136720573.pdf).
 - Weighted aggregation uses temperature-scaled confidences `w_i = softmax((c_i - mu)/tau)`.
 - Final prediction is `age = sum_i(w_i * age_i)`; variance is tracked for filtering and curriculum scheduling.
 - Provides both CLI (`python moe_age_estimator/infer.py --input ...`) and batch API integration for dataset relabeling.
