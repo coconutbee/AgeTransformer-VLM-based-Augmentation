@@ -3,11 +3,9 @@
 > zh: AgeTransformer-VLM-based-Augmentation 以我提出的 AgeTransformer 架構為核心，整合視覺語言模型與資料增強流程，建立可一次輸出十種年齡轉換結果的年齡變換器。
 > en: AgeTransformer-VLM-based-Augmentation builds on the proposed AgeTransformer architecture to produce ten age-conditioned renderings per input face, pairing MoE-based relabeling with enhanced training data.
 
-## 概述 | Overview
-- zh: 針對 FFHQ-Aging 與 CAF 進行嚴謹的前處理，提供更可信賴的訓練標籤與乾淨樣本。
-- zh: 設計 MoE 年齡預估器融合 Janus-Pro、MiVOLO、ResNet50、VGG16，以提升年齡標註一致性。
-- en: Supplies ready-to-train AgeTransformer code plus curated datasets so researchers can reproduce and improve age translation.
-- en: Offers pretrained AgeTransformer checkpoints to validate performance out-of-the-box and a pipeline to fine-tune on custom data.
+## Overview
+- Supplies ready-to-train AgeTransformer code plus curated datasets so researchers can reproduce and improve age translation.
+- Offers pretrained AgeTransformer checkpoints to validate performance out-of-the-box and a pipeline to fine-tune on custom data.
 
 ## Highlights
 - AgeTransformer backbone delivers ten discrete age anchors (configurable default: 5, 15, 25, 35, 45, 55, 65, 75, 85, 95 years).
