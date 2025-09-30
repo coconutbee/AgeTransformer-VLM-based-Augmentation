@@ -2,3 +2,4 @@ models/
 checkpoint/
 data/
 debug_hair.py/
+agt_infer.py/
