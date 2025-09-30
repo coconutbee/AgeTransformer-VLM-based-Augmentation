@@ -84,6 +84,7 @@ Upload images, select target age IDs, and preview/download the generated grids d
 ```bash
 python moe_estimator.py
 ```
+Before running, download and build the Janus-Pro 7B model (see [huggingface.co/deepseek-ai/Janus-Pro-7B](https://huggingface.co/deepseek-ai/Janus-Pro-7B)) and update `CONFIG['janus_model_path']` to point at the local checkpoint directory.
 Defaults are controlled by the `CONFIG` dictionary near the top of the script:
 - `image_folder`: root directory of input face crops (recurses into subfolders).
 - `*_model_path`: local checkpoints for each expert; download links are listed below.
