@@ -42,7 +42,6 @@ AgeTransformer-VLM-based-Augmentation/
 - Python 3.10+
 - CUDA-capable GPU (recommended) with matching PyTorch build
 - Conda or venv for isolated environments
-- Git LFS for large checkpoints (optional but recommended)
 
 Install PyTorch that matches your CUDA driver from [pytorch.org](https://pytorch.org/get-started/locally/) before installing the remaining packages.
 
@@ -94,14 +93,11 @@ Artifacts generated:
 - `predictions_Janus.csv`: raw Janus outputs.
 - `predictions.csv`: consolidated table containing expert scores and `MoE_Predicted_Age`.
 
-### Training (coming soon)
-Training utilities are undergoing cleanup and are not yet part of this release. We will publish the scripts, configs, and documentation once the codebase is production-ready. Dataset links remain below for researchers preparing their own pipelines.
 
 ## Data and Checkpoints
 | Artifact | Description | Location / Link | Destination |
 | --- | --- | --- | --- |
 | MoE Age Estimator | Ensemble scripts + weights (Janus-Pro, MiVOLO, ResNet50, VGG16 fusion) | [mega](https://mega.nz/file/2U8lxRKJ#Z2KczVkP72AnvNawfK8tAGeNZknqrack3VGjbZZC6zM) | `models/age_estimator.pth` |
-| FFHQ-Aging Relabeled | Balanced, relabeled training/validation splits | [train](https://mega.nz/folder/SUM1GADC#4APMLfB6qQFPbDbK4kXgCw), [val](https://mega.nz/folder/2I8kUJID#oyv5ckiiJV3knq_ktZqIPg) | `data/train_128_balance`, `data/val_128_relabel_ori` |
 | CAF-Enhanced Dataset | DDColor + ESRGAN enhanced faces | [mega](https://mega.nz/folder/j1BWXa4T#DwHyfwBY9t84QxmS39ItIA) | `data/CAF_enhanced` |
 | AgeTransformer Generator | Pretrained generator weights | [mega](https://mega.nz/file/XEk3HSTQ#X24EA0t0YlIJI8sIt6dN3iPHLu4rVagVfnI7q0uQ3iA) | `models/agetransformer.pt` |
 | Expert Backbones | MiVOLO detector + checkpoint | [detector](https://drive.google.com/file/d/1CGNCkZQNj5WkP3rLpENWAOgrBQkUWRdw/view), [MiVOLO](https://drive.google.com/file/d/11i8pKctxz3wVkDBlWKvhYIh7kpVFXSZ4/view) | `models/` |
