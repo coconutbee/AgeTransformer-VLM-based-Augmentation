@@ -125,7 +125,7 @@ channel_multiplier = st.sidebar.number_input("Channel Multiplier", min_value=1, 
 num_classes = st.sidebar.number_input("Num Age Classes", min_value=2, max_value=32, value=10, step=1)
 
 # Checkpoint
-default_ckpt = "ckeckpoint/agetransformer.pt"
+default_ckpt = "./checkpoint/agetransformer.pt"
 ckpt_path = st.sidebar.text_input("Checkpoint (.pt)", value=default_ckpt)
 
 # Targets

@@ -76,7 +76,7 @@ AgeTransformer-VLM-based-Augmentation/
 ### Checkpoints
 - Download the MoE age estimator[(link)](https://mega.nz/file/2U8lxRKJ#Z2KczVkP72AnvNawfK8tAGeNZknqrack3VGjbZZC6zM) and AgeTransformer pretrained weights from the Releases page and place them under `models/` directory.
 - Download the experts' weights and place them under `moe_age_estimator/checkpoints/`. MiVOLO[(link)](). ResNet50[(link)](https://mega.nz/file/eVty2bSY#byRidRMlh5G26mZ-23-Y9gXwxtKSFuRSx-7J43aVK24). VGG16[(link)](https://mega.nz/file/HclwGZrR#qNEedMY5N2rBIui3CRTa59SNM9oMXvjt3Pr3_qMZix0). Janus-Pro[(link)](https://huggingface.co/deepseek-ai/Janus-Pro-7B).
-- Download the agetransformer [(pretrained weights)](https://mega.nz/file/TcM33DKI#x4osKY1Zd6pEoUsZA_tq0P2cuITxtctNshIC_mvbkZA) from the Releases page and place them under `models/` directory.
+- Download the agetransformer [(pretrained weights)](https://mega.nz/file/XEk3HSTQ#X24EA0t0YlIJI8sIt6dN3iPHLu4rVagVfnI7q0uQ3iA) from the Releases page and place them under `models/` directory.
 
 ## MoE Age Estimator
 - Experts: Janus-Pro, [MiVOLO](https://github.com/WildChlamydia/MiVOLO.git), ResNet50(our previous work), VGG16(our previous work).
