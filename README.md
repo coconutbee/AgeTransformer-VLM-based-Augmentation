@@ -29,8 +29,7 @@ CAF dataset --> DDColor --> ESRGAN --> Enhanced faces -->
 | MoE Age Estimator | Ensemble scripts + weights (Janus-Pro, MiVOLO, ResNet50, VGG16 fusion). | Releases (coming soon) |
 | FFHQ-Aging Relabeled | FFHQ-Aging relabeled training data | Finished |
 | CAF-Enhanced Dataset | DDColor + ESRGAN processed images paired with original metadata. | Releases (coming soon) |
-| AgeTransformer Training Code | Whole agetransformer training code. | Finished |
-| Pretrained AgeTransformer | Checkpoints ready for inference + demo notebooks. | Releases (coming soon) |
+| Pretrained AgeTransformer | Checkpoints ready for inference | Releases (coming soon) |
 
 ## Getting Started
 1. Clone the repository.
@@ -71,18 +70,19 @@ AgeTransformer-VLM-based-Augmentation/
 - Place our balanced & relabeled FFHQ-Aging [training_data](https://mega.nz/folder/SUM1GADC#4APMLfB6qQFPbDbK4kXgCw) and [validation_data](https://mega.nz/folder/2I8kUJID#oyv5ckiiJV3knq_ktZqIPg) images under `data/`.
 
 ### CAF Enhancement
-- The raw CAF dataset can download from our [cloud](http://www.vision.caltech.edu/datasets/caf/).
-- Apply [DDColor](https://github.com/piddnad/DDColor.git) for color restoration followed by [ESRGAN](https://github.com/TencentARC/GFPGAN.git) for super-resolution; If you want to download the enhanced data directly you can find it by the [link](http://www.vision.caltech.edu/datasets/caf/).
+- The enhanced CAF dataset can download from our [cloud](https://mega.nz/folder/rEVASTYC#ivHC0S1jrp2cvRIRojot9Q).
+- The enhanced CAF dataset made from CAF dataset. We applied [DDColor](https://github.com/piddnad/DDColor.git) for color restoration followed by [ESRGAN](https://github.com/TencentARC/GFPGAN.git) for super-resolution.
 
 ### Checkpoints
 - Download the MoE age estimator[(link)](https://mega.nz/file/2U8lxRKJ#Z2KczVkP72AnvNawfK8tAGeNZknqrack3VGjbZZC6zM) and AgeTransformer pretrained weights from the Releases page and place them under `models/` directory.
-- Download the experts' weights and place them under `moe_age_estimator/checkpoints/`. MiVOLO[(link)](). ResNet50[(link)](). VGG16[(link)](). Janus-Pro[(link)](https://huggingface.co/deepseek-ai/Janus-Pro-7B).
+- Download the experts' weights and place them under `moe_age_estimator/checkpoints/`. MiVOLO[(link)](). ResNet50[(link)](https://mega.nz/file/eVty2bSY#byRidRMlh5G26mZ-23-Y9gXwxtKSFuRSx-7J43aVK24). VGG16[(link)](https://mega.nz/file/HclwGZrR#qNEedMY5N2rBIui3CRTa59SNM9oMXvjt3Pr3_qMZix0). Janus-Pro[(link)](https://huggingface.co/deepseek-ai/Janus-Pro-7B).
+- Download the agetransformer [(pretrained weights)](https://mega.nz/file/TcM33DKI#x4osKY1Zd6pEoUsZA_tq0P2cuITxtctNshIC_mvbkZA) from the Releases page and place them under `models/` directory.
 
 ## MoE Age Estimator
-- Experts: Janus-Pro (VLM-augmented), MiVOLO, ResNet50[(our previous work)](https://link.springer.com/chapter/10.1007/978-3-030-89131-2_27), VGG16[(our previous work)](https://www.ecva.net/papers/eccv_2022/papers_ECCV/papers/136720573.pdf).
+- Experts: Janus-Pro, [MiVOLO](https://github.com/WildChlamydia/MiVOLO.git), ResNet50(our previous work), VGG16(our previous work).
 - Weighted aggregation uses gating scores with softmax normalization `w_i = softmax(g_i)`.
 - Final prediction is `age = sum_i(w_i * age_i)`.
-- Provides both CLI (`python moe_age_estimator/infer.py --input ...`) and batch API integration for dataset relabeling.
+- Provides both CLI (`python moe_infer.py --input ...`) and batch API integration for dataset relabeling.
 
 ## Inference & Evaluation
 - Use `src/infer.py` to generate ten age-shifted images from a single input; specify `--ages` to override default anchors.
