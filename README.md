@@ -1,6 +1,6 @@
 # AgeTransformer-VLM-based-Augmentation
 
-AgeTransformer-VLM-based-Augmentation extends the original AgeTransformer architecture with vision-language guidance and mixture-of-experts (MoE) relabeling to generate ten age-conditioned renderings for every input face.
+AgeTransformer: A VLM-enhanced Model for Facial Age Transformation extends the original AgeTransgan architecture with vision-language guidance and mixture-of-experts (MoE) relabeling to generate ten age-conditioned renderings for every input face.
 
 ## Table of Contents
 - [Highlights](#highlights)
@@ -128,7 +128,7 @@ We welcome bug reports, feature suggestions, and pull requests once the public r
 If you leverage AgeTransformer-VLM-based-Augmentation or its datasets, please cite:
 ```
 @misc{AgeTransformer2025,
-  title  = {AgeTransformer-VLM-based-Augmentation},
+  title  = {AgeTransformer: A VLM-enhanced Model for Facial Age Transformation},
   author = {Paul, ???},
   year   = {2025},
   note   = {Technical Report},
