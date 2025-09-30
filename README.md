@@ -70,25 +70,27 @@ AgeTransformer-VLM-based-Augmentation/
 - Place our balanced & relabeled FFHQ-Aging [training_data](https://mega.nz/folder/SUM1GADC#4APMLfB6qQFPbDbK4kXgCw) and [validation_data](https://mega.nz/folder/2I8kUJID#oyv5ckiiJV3knq_ktZqIPg) images under `data/`.
 
 ### CAF Enhancement
-- The enhanced CAF dataset can download from our [cloud](https://mega.nz/folder/rEVASTYC#ivHC0S1jrp2cvRIRojot9Q).
+- The enhanced CAF dataset can download from our [cloud](https://mega.nz/folder/j1BWXa4T#DwHyfwBY9t84QxmS39ItIA).
 - The enhanced CAF dataset made from CAF dataset. We applied [DDColor](https://github.com/piddnad/DDColor.git) for color restoration followed by [ESRGAN](https://github.com/TencentARC/GFPGAN.git) for super-resolution.
 
 ### Checkpoints
 - Download the MoE age estimator[(link)](https://mega.nz/file/2U8lxRKJ#Z2KczVkP72AnvNawfK8tAGeNZknqrack3VGjbZZC6zM) and AgeTransformer pretrained weights from the Releases page and place them under `models/` directory.
-- Download the experts' weights and place them under `moe_age_estimator/checkpoints/`. MiVOLO[(link)](). ResNet50[(link)](https://mega.nz/file/eVty2bSY#byRidRMlh5G26mZ-23-Y9gXwxtKSFuRSx-7J43aVK24). VGG16[(link)](https://mega.nz/file/HclwGZrR#qNEedMY5N2rBIui3CRTa59SNM9oMXvjt3Pr3_qMZix0). Janus-Pro[(link)](https://huggingface.co/deepseek-ai/Janus-Pro-7B).
+- Download the experts' weights and place them under `models/`. MiVOLO[(face detector model)](https://drive.google.com/file/d/1CGNCkZQNj5WkP3rLpENWAOgrBQkUWRdw/view)&[(mivolo checkpoint)](https://drive.google.com/file/d/11i8pKctxz3wVkDBlWKvhYIh7kpVFXSZ4/view). ResNet50[(link)](https://mega.nz/file/eVty2bSY#byRidRMlh5G26mZ-23-Y9gXwxtKSFuRSx-7J43aVK24). VGG16[(link)](https://mega.nz/file/HclwGZrR#qNEedMY5N2rBIui3CRTa59SNM9oMXvjt3Pr3_qMZix0). Janus-Pro[(link)](https://huggingface.co/deepseek-ai/Janus-Pro-7B).
 - Download the agetransformer [(pretrained weights)](https://mega.nz/file/XEk3HSTQ#X24EA0t0YlIJI8sIt6dN3iPHLu4rVagVfnI7q0uQ3iA) from the Releases page and place them under `models/` directory.
+
+models/
+├── 79999_iter.pth
+├── age_estimator.pth
+├── agetransformer.pt
+├── best_dynamic_moe_model.pth
+├── model_best_loss
+├── model_imdb_cross_person_4.22_99.46.pth.tar
+└── yolov8x_person_face.pt
 
 ## MoE Age Estimator
 - Experts: Janus-Pro, [MiVOLO](https://github.com/WildChlamydia/MiVOLO.git), ResNet50(our previous work), VGG16(our previous work).
 - Weighted aggregation uses gating scores with softmax normalization `w_i = softmax(g_i)`.
 - Final prediction is `age = sum_i(w_i * age_i)`.
-- Provides both CLI (`python moe_infer.py --input ...`) and batch API integration for dataset relabeling.
-
-## Inference & Evaluation
-- Use `src/infer.py` to generate ten age-shifted images from a single input; specify `--ages` to override default anchors.
-- Identity preservation can be evaluated with ArcFace or similar embeddings (scripts will be located in `tools/eval_identity.py`).
-- Age accuracy is verified by the MoE estimator in evaluation-only mode for each generated output.
-- Quantitative reports (FID, LPIPS, age MAE) and qualitative grids are written to `outputs/experiments/<run_name>/`.
 
 ## Contributing
 - Bug reports, feature requests, and pull requests are welcome once the initial code release is published.

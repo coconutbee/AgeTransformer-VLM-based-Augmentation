@@ -14,56 +14,60 @@ import cv2
 import torch
 import json
 import csv
-from Janus import janus_age_estimator
-from Jim.age_estimator import resnet50_ft_dims_2048_new, vgg16_age_estimator, resnet50_age_estimator
-from Jim.age_estimator.resnet50_age_estimator import resnet50_ft
-from Jim.age_estimator.resnet50_age_estimator import predict_resnet50
-from Jim.age_estimator.vgg16_age_estimator import VGG16_AGE, predict_vgg16, write_batch_to_csv
+from module.age_estimator import janus_age_estimator
+from module.age_estimator import resnet50_ft_dims_2048_new, vgg16_age_estimator, resnet50_age_estimator
+from module.age_estimator.resnet50_age_estimator import resnet50_ft
+from module.age_estimator.resnet50_age_estimator import predict_resnet50
+from module.age_estimator.vgg16_age_estimator import VGG16_AGE, predict_vgg16, write_batch_to_csv
 from PIL import Image
 from torch import nn
 import logging
 import warnings
 
+# Setup logging
 logging.basicConfig(filename='warnings.log', level=logging.WARNING)
 warnings.simplefilter("always")
 logging.captureWarnings(True)
 
 CONFIG = {
-    'image_folder': "/media/avlab/disk2/Yuri/caf_enhance_256_gan0.5/0",
-    'janus_model_path': "deepseek-ai/Janus-Pro-7B",
-    'mivolo_checkpoint': "/media/avlab/disk1/Jim/MiVOLO/models/model_imdb_cross_person_4.22_99.46.pth.tar",
-    'vgg16_model_path': "/media/avlab/disk1/Jim/age_estimator/result/mean_variance_ffhq/model_best_loss",
-    'resnet_model_path': "/media/avlab/disk1/Jim/age_estimator/result/New_resnet50/age_estimator.pth",
-    'moe_model_path': "best_dynamic_moe_model_20250324_011938.pth",
-    'start_age': 0,
-    'end_age': 120
+    'image_folder': "./data/test_images",  
+    'janus_model_path': "deepseek-ai/Janus-Pro-7B",  
+    'mivolo_checkpoint': "./models/model_imdb_cross_person_4.22_99.46.pth.tar",  
+    'vgg16_model_path': "./models/model_best_loss",  
+    'resnet_model_path': "./models/age_estimator.pth",  
+    'moe_model_path': "./models/best_dynamic_moe_model.pth",
+    'start_age': 0,  
+    'end_age': 120  
 }
 
+# Device check
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Define model columns
 model_columns = ["Janus-7B-Pro", "Vgg16", "MiVOLO", "Resnet50"]
 
+# Run Janus in conda env
 def run_janus_model(image_path):
     result = subprocess.run(['conda', 'run', '-n', 'Janus', 'python', 'janus_model.py', '--input', image_path], capture_output=True, text=True)
     return result.stdout
 
+# Run MiVOLO in conda env
 def run_mivolo_model(image_path):
     result = subprocess.run(['conda', 'run', '-n', 'mivolo', 'python', 'mivolo_model.py', '--input', image_path], capture_output=True, text=True)
     return result.stdout
 
+# Run VGG16 in conda env
 def run_vgg16_model(image_path):
     result = subprocess.run(['conda', 'run', '-n', 'IPCGAN', 'python', 'vgg16_model.py', '--input', image_path], capture_output=True, text=True)
     return result.stdout
 
+# Run ResNet50 in conda env
 def run_Resnet50_model(image_path):
     result = subprocess.run(['conda', 'run', '-n', 'IPCGAN', 'python', 'Resnet50_model.py', '--input', image_path], capture_output=True, text=True)
     return result.stdout
 
-image_folder = CONFIG['image_folder']
-image_path = image_folder
-janus_output = run_janus_model(image_path)
-mivolo_output = run_mivolo_model(image_path)
 
+# Expert sub-network
 class ExpertMLP(nn.Module):
     def __init__(self):
         super().__init__()
@@ -76,6 +80,8 @@ class ExpertMLP(nn.Module):
     def forward(self, x):
         return self.mlp(x)
 
+
+# Mixture of Experts (MoE) Network
 class MixtureOfExpertsNet(nn.Module):
     def __init__(self, num_experts=4):
         super(MixtureOfExpertsNet, self).__init__()
@@ -105,6 +111,8 @@ class MixtureOfExpertsNet(nn.Module):
         prediction = torch.where(weight_sum.squeeze() > 0, prediction, torch.full_like(prediction, float('nan')))
         return prediction
 
+
+# Collect image paths
 def get_image_paths(image_folder):
     image_paths = []
     for root, _, files in os.walk(image_folder):
@@ -113,22 +121,15 @@ def get_image_paths(image_folder):
                 image_paths.append(os.path.join(root, file))
     return image_paths
 
-def process_image(image_path):
-    img = cv2.imread(image_path)
-    if img is None:
-        raise ValueError(f"Image at {image_path} could not be loaded.")
-    img_resized = cv2.resize(img, (256, 256))
-    img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
-    _, img_encoded = cv2.imencode('.jpg', img_rgb)
-    return img_encoded.tobytes()
 
+# Janus age estimator
 def run_janus_age_estimator(image_paths, model_path=CONFIG['janus_model_path'], prompt="Please provide a numerical age. Only answer with a number. If unable to answer, say unknown.", resize=256):
-    janus_script_path = "/media/avlab/disk1/Janus/janus_age_estimator.py"
+    janus_script_path = "./module/age_estimator/janus_age_estimator.py"
     command = [
-        "python", janus_script_path,
-        "--model_path", model_path,
-        "--image_folder", CONFIG['image_folder'],
-        "--prompt", prompt,
+        "python", janus_script_path, 
+        "--model_path", model_path, 
+        "--image_folder", CONFIG['image_folder'], 
+        "--prompt", prompt, 
         "--resize", str(resize)
     ]
     predictions = {}
@@ -165,12 +166,14 @@ def run_janus_age_estimator(image_paths, model_path=CONFIG['janus_model_path'], 
 
     return predictions
 
+
+# MiVOLO age estimator
 def run_mivolo_age_estimator(image_folder=CONFIG['image_folder'], checkpoint=CONFIG['mivolo_checkpoint']):
-    mivolo_script_path = "/media/avlab/disk1/Jim/MiVOLO/mivolo_age_estimator.py"
+    mivolo_script_path = "./module/age_estimator/mivolo_age_estimator.py"
     command = [
         "conda", "run", "-n", "mivolo", "python", mivolo_script_path,
         "--input", image_folder, "--checkpoint", checkpoint,
-        "--detector-weights", "/media/avlab/disk1/Jim/MiVOLO/models/yolov8x_person_face.pt"
+        "--detector-weights", "./checkpoint/yolov8x_person_face.pt"
     ]
     predictions = {}
 
@@ -181,11 +184,11 @@ def run_mivolo_age_estimator(image_folder=CONFIG['image_folder'], checkpoint=CON
             predictions_list = ast.literal_eval(output_lines[-1])
         except (SyntaxError, ValueError):
             print("Error: Unable to parse MiVOLO output.")
-            return predictions
+            return predictions  
 
         if not isinstance(predictions_list, list):
             print("Error: Parsed data is not a list.")
-            return predictions
+            return predictions  
 
         for item in tqdm(predictions_list, desc="Processing Images", unit="image"):
             if isinstance(item, tuple) and len(item) == 3:
@@ -200,12 +203,14 @@ def run_mivolo_age_estimator(image_folder=CONFIG['image_folder'], checkpoint=CON
     except subprocess.CalledProcessError as e:
         print(f"Error executing script: {e.stderr}")
     except subprocess.TimeoutExpired:
-        print(f"Execution timed out after {timeout} seconds")
+        print("Execution timed out")
     except Exception as e:
         print(f"An unexpected error occurred: {str(e)}")
     
-    return predictions
+    return predictions  
 
+
+# VGG16 age estimator
 def run_vgg16_age_estimator(image_paths, model):
     predictions = {}
     for image_path in tqdm(image_paths, desc="VGG16"):
@@ -218,6 +223,8 @@ def run_vgg16_age_estimator(image_paths, model):
         predictions[image_path] = pred if pred is not None else np.nan
     return predictions
 
+
+# ResNet50 age estimator
 def run_resnet_age_estimator(image_paths, model):
     predictions = {}
     for image_path in tqdm(image_paths, desc="Resnet50"):
@@ -231,6 +238,8 @@ def run_resnet_age_estimator(image_paths, model):
         predictions[image_path] = pred if pred is not None else np.nan
     return predictions
 
+
+# Save results to CSV
 def write_predictions_to_csv(image_paths, predictions_dicts, output_filename):
     all_models = list(predictions_dicts.keys())
     columns = ['Image'] + all_models
@@ -247,16 +256,16 @@ def write_predictions_to_csv(image_paths, predictions_dicts, output_filename):
     df.to_csv(output_filename, index=False)
     print(f"Results saved to {output_filename}")
 
+
+# Main
 def main():
-    predictions = {}
     start_time = time.time()
     image_paths = get_image_paths(CONFIG['image_folder'])
-    total_images = len(image_paths)
     if not image_paths:
         print(f"No images found in the folder: {CONFIG['image_folder']}")
         return
     
-    print("Processing: Janus predict...")
+    print("Running Janus prediction...")
     predictions_from_janus = run_janus_age_estimator(image_paths)
     output_filename = f'predictions_Janus.csv'
 
@@ -268,17 +277,18 @@ def main():
             writer.writerow({'Image': img_path, 'Predicted_Age': age})
 
     print(f"Results saved to {output_filename}")
-    print("Processing: MiVOLO predict...")
+
+    print("Running MiVOLO prediction...")
     predictions_from_mivolo = run_mivolo_age_estimator(image_folder=CONFIG['image_folder'])
-    
+
     vgg16_model = VGG16_AGE()
     vgg16_model.load_state_dict(torch.load(CONFIG['vgg16_model_path'], weights_only=True))
-    vgg16_model.eval()
+    vgg16_model.eval()  
     vgg16_model.to(device)
     predictions_from_vgg16 = run_vgg16_age_estimator(image_paths, vgg16_model)
     write_batch_to_csv(predictions_from_vgg16.items(), "VGG16_AGE")
 
-    print("Processing: ResNet50 predict...")
+    print("Running ResNet50 prediction...")
     resnet_model = resnet50_ft()
     resnet_model.load_state_dict(torch.load(CONFIG['resnet_model_path'], weights_only=True))
     resnet_model.eval()
@@ -292,12 +302,13 @@ def main():
         'Vgg16': [predictions_from_vgg16.get(img, np.nan) for img in image_paths],
         'Resnet50': [predictions_from_resnet50.get(img, np.nan) for img in image_paths]
     })
+
     df[model_columns] = df[model_columns].apply(pd.to_numeric, errors="coerce")
     df[model_columns] = df[model_columns].where(df[model_columns] <= 150, "error")
     df.replace(["error", "Unknown"], np.nan, inplace=True)
     df[model_columns] = df[model_columns].apply(pd.to_numeric, errors='coerce')
 
-    print("Processing: Mixture of Experts model inference...")
+    print("Running Mixture of Experts prediction...")
     moe_input_tensor = torch.tensor(df[model_columns].values.astype(np.float32)).to(device)
 
     moe_model = MixtureOfExpertsNet(num_experts=len(model_columns)).to(device)
@@ -308,12 +319,11 @@ def main():
         moe_preds = moe_model(moe_input_tensor).detach().cpu().numpy()
 
     df["MoE_Predicted_Age"] = moe_preds
-
     df[["Image"] + model_columns + ["MoE_Predicted_Age"]].to_csv("predictions.csv", index=False)
-    print("store result to predictions.csv")
+    print("Inference completed, results saved to predictions.csv")
 
     total_time = time.time() - start_time
-    print(f"avg time per image: {total_time / len(image_paths):.2f} seconds")
+    print(f"Average processing time per image: {total_time / len(image_paths):.2f} seconds")
 
 if __name__ == "__main__":
     main()
