@@ -132,7 +132,7 @@ def run_inference(
 # ---------- CLI ----------
 def parse_args():
     p = argparse.ArgumentParser(description="AgeTransformer Inference")
-    p.add_argument("--ckpt", type=str, default="checkpoint/agetransformer.pt", help="Path to checkpoint .pt (should contain g_ema).")
+    p.add_argument("--ckpt", type=str, default="models/agetransformer.pt", help="Path to checkpoint .pt (should contain g_ema).")
     p.add_argument("--input", type=str, required=True, help="Path to an image file or a folder of images.")
     p.add_argument("--out", type=str, default="outputs", help="Output folder.")
     p.add_argument("--size", type=int, default=128, help="Input resolution (must match training).")
