@@ -12,6 +12,7 @@ import io
 from pathlib import Path
 from typing import Tuple, Dict, List
 
+from diffusers import StableDiffusionInpaintPipeline
 import numpy as np
 import streamlit as st
 import torch
@@ -29,6 +30,58 @@ from module.face_model import BiSeNet  # BiSeNet face parser (n_classes=19 by de
 st.set_page_config(page_title="AgeTransformer Demo", page_icon="🧓", layout="wide")
 
 # ---------------------- Model loading ---------------------- #
+
+@st.cache_resource(show_spinner=False)
+def load_sd15_inpaint(device: torch.device, dtype: torch.dtype, use_xformers: bool = False, cpu_offload: bool = True):
+    """
+    Load SD-1.5 inpaint with safe defaults:
+    - keep safety checker ON (public-friendly)
+    - DO NOT enable xFormers by default (avoid flash-attention kernel issues)
+    - enable attention/vae slicing and (optional) CPU offload to save VRAM
+    """
+    from diffusers import StableDiffusionInpaintPipeline
+
+    pipe = StableDiffusionInpaintPipeline.from_pretrained(
+        "runwayml/stable-diffusion-inpainting",
+        torch_dtype=dtype,
+        # keep safety checker enabled for public apps (do NOT pass safety_checker=None)
+    )
+
+    # move to device
+    pipe = pipe.to(device if device.type == "cuda" else "cpu")
+
+    # Memory-friendly features (safe on any GPU/CPU)
+    pipe.enable_attention_slicing("max")   # split attention
+    pipe.vae.enable_tiling()               # tile VAE decode
+    try:
+        pipe.enable_vae_slicing()
+    except Exception:
+        pass
+
+    # xFormers is optional, and can crash on some combos. Try-enable then fallback.
+    if use_xformers and device.type == "cuda":
+        try:
+            pipe.enable_xformers_memory_efficient_attention()
+        except Exception as e:
+            # Fallback: disable xformers and keep slicing instead
+            try:
+                pipe.disable_xformers_memory_efficient_attention()
+            except Exception:
+                pass
+            st.warning(f"xFormers not available/compatible, using standard attention instead. ({e})")
+
+    # Optional CPU offload to reduce VRAM (slower but safer)
+    if cpu_offload:
+        try:
+            pipe.enable_sequential_cpu_offload()
+        except Exception:
+            try:
+                pipe.enable_model_cpu_offload()
+            except Exception:
+                pass
+
+    return pipe
+
 
 @st.cache_resource(show_spinner=False)
 def load_generator(
@@ -110,6 +163,66 @@ def save_image_to_bytes(tensor: torch.Tensor) -> bytes:
 
 # ---------------------- Hair mask & graying ---------------------- #
 
+def dilate_mask(mask01: np.ndarray, k: int = 5) -> np.ndarray:
+    m = (mask01 > 0.5).astype(np.uint8) * 255
+    kernel = np.ones((k, k), np.uint8)
+    m = cv2.dilate(m, kernel, iterations=1)
+    return (m.astype(np.float32) / 255.0)
+
+def feather_mask(mask01: np.ndarray, k: int = 17, sigma: float = 6.0) -> np.ndarray:
+    m = np.clip(mask01.astype(np.float32), 0.0, 1.0)
+    m = cv2.GaussianBlur(m, (k, k), sigma)
+    return np.clip(m, 0.0, 1.0)
+
+def sd15_inpaint_once(
+    pipe,
+    init_pil: Image.Image,
+    mask_soft01: np.ndarray,  # 0~1 soft mask, 白=要重繪
+    prompt: str,
+    negative_prompt: str,
+    steps: int,
+    guidance: float,
+    strength: float,
+    seed: int,
+):
+    # 目標尺寸 = 輸入大小
+    W, H = init_pil.size
+    if mask_soft01.shape != (H, W):
+        mask_soft01 = cv2.resize(mask_soft01, (W, H), interpolation=cv2.INTER_CUBIC)
+    mask_img = Image.fromarray((np.clip(mask_soft01, 0, 1) * 255).astype(np.uint8), mode="L")
+
+    generator = torch.Generator(device=pipe.device if isinstance(pipe.device, torch.device) else "cpu").manual_seed(seed)
+
+    # 回傳 dict 才拿得到 nsfw 標誌（不同版本可能無此欄，容錯處理）
+    out = pipe(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        image=init_pil,
+        mask_image=mask_img,
+        num_inference_steps=steps,
+        guidance_scale=guidance,
+        strength=strength,
+        generator=generator,
+        return_dict=True,
+    )
+    img = out.images[0]
+    # 強制與輸入相同大小（個別版本可能回 512×512）
+    if img.size != (W, H):
+        img = img.resize((W, H), Image.BICUBIC)
+
+    nsfw = False
+    if hasattr(out, "nsfw_content_detected") and out.nsfw_content_detected:
+        # 部分版本提供這個欄位
+        nsfw = bool(out.nsfw_content_detected[0])
+
+    return img, nsfw
+
+
+def is_nearly_black(pil_img: Image.Image, thr: float = 8.0) -> bool:
+    arr = np.asarray(pil_img.convert("L"), dtype=np.uint8)
+    return float(arr.mean()) < thr
+
+
 def _pil_to_bgr01(img: Image.Image) -> np.ndarray:
     arr = np.array(img.convert("RGB"), dtype=np.float32) / 255.0
     return cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
@@ -132,28 +245,37 @@ def generate_hair_mask_bisenet(
     img_size: int,
     device: torch.device,
     hair_ids: List[int] = [17],
-) -> np.ndarray:
+    min_area_ratio: float = 0.015,  # 至少佔 1.5% 影像才算有效
+) -> Tuple[np.ndarray, bool]:
     """
-    Returns binary mask (H,W) in {0,1}; uses fallback ellipse if empty.
-    Supports multiple hair label IDs (e.g., [17, 13]) depending on the weights.
+    Returns:
+        mask01: (H,W) in [0,1] float soft mask (尚未羽化)
+        used_fallback: True 代表分割不可靠（將在推論處跳過白化）
     """
     to_tensor = transforms.Compose([
-        transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.BICUBIC),
+        transforms.Resize((img_size, img_size), interpolation=transforms.InterpolationMode.NEAREST),  # 保留邊界
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
     ])
-    x = to_tensor(pil_img.convert("RGB")).unsqueeze(0).to(device)  # [1,3,H,W]
+    x = to_tensor(pil_img.convert("RGB")).unsqueeze(0).to(device)
 
     out = parser(x)
     logits = out[0] if isinstance(out, (list, tuple)) else out  # [1,C,H,W]
     parsing = logits.squeeze(0).argmax(0).detach().cpu().numpy()
 
-    hair = np.isin(parsing, np.array(hair_ids)).astype(np.float32)
+    # 多個 hair 類別容錯
+    mask = np.isin(parsing, np.array(hair_ids)).astype(np.float32)
 
-    if hair.sum() < 50:  # too small or empty -> fallback
-        hair = _ellipse_fallback_mask(img_size, img_size)
+    # 面積門檻檢查
+    H, W = mask.shape
+    area = mask.sum()
+    used_fallback = False
+    if area < (H * W * min_area_ratio):
+        # 直接宣告 fallback，不做白化（避免你看到的白橢圓）
+        used_fallback = True
+        mask = np.zeros_like(mask, dtype=np.float32)
 
-    return hair  # (H,W) in {0,1}
+    return mask, used_fallback
 
 def hair_brightness_bgr01(bgr01: np.ndarray, mask01: np.ndarray) -> float:
     if bgr01.shape[:2] != mask01.shape:
@@ -164,6 +286,31 @@ def hair_brightness_bgr01(bgr01: np.ndarray, mask01: np.ndarray) -> float:
     if m.sum() == 0:
         return 0.0
     return float((Y[m]).mean())
+
+
+def feather_mask(mask01: np.ndarray, k: int = 9, sigma: float = 3.0) -> np.ndarray:
+    """將二值遮罩羽化成 0~1 軟遮罩：先形態學開閉，再高斯模糊與正規化。"""
+    m = mask01.astype(np.float32)
+    if m.max() > 1.0:  # 容錯
+        m = (m > 127.5).astype(np.float32)
+    kernel = np.ones((3, 3), np.uint8)
+    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, kernel, iterations=1)
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, kernel, iterations=1)
+    m = cv2.GaussianBlur(m, (k, k), sigma)
+    m = np.clip(m, 0.0, 1.0)
+    return m
+
+def blend_to_white_soft(pil_img: Image.Image, soft_mask: np.ndarray, alpha: float) -> Image.Image:
+    """使用軟遮罩做白化混合（避免硬邊）。"""
+    if alpha <= 0:
+        return pil_img
+    bgr = _pil_to_bgr01(pil_img)
+    if bgr.shape[:2] != soft_mask.shape:
+        bgr = cv2.resize(bgr, (soft_mask.shape[1], soft_mask.shape[0]), interpolation=cv2.INTER_CUBIC)
+    m = np.clip(soft_mask, 0.0, 1.0)
+    m = (alpha * m)[..., None]  # (H,W,1)
+    out = bgr * (1.0 - m) + 1.0 * m
+    return _bgr01_to_pil(out)
 
 def apply_blend_to_white(pil_img: Image.Image, mask01: np.ndarray, alpha: float) -> Image.Image:
     if alpha <= 0:
@@ -212,6 +359,11 @@ ckpt_path = st.sidebar.text_input("AgeTransformer checkpoint (.pt)", value=defau
 # BiSeNet weight path
 default_bisenet = "./checkpoint/79999_iter.pth"
 bisenet_path = st.sidebar.text_input("BiSeNet weights (.pth)", value=default_bisenet)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Diffusion Inpaint (SD-1.5) for hair graying**")
+use_sd15 = st.sidebar.checkbox("Use SD-1.5 inpaint for ages 6–9 (recommended)", value=True)
+seed = st.sidebar.number_input("Inpaint Seed", min_value=0, max_value=2_147_483_647, value=1234, step=1)
 
 # hair label ids (comma-separated)
 st.sidebar.markdown("**Hair label IDs (comma-separated)**")
@@ -282,6 +434,11 @@ files = st.file_uploader(
 G = None
 Parser = None
 load_ok = False
+SD15 = None
+if use_sd15:
+    with st.spinner("Loading SD-1.5 Inpaint ..."):
+        sd_dtype = torch.float16 if (device.type == "cuda") else torch.float32
+        SD15 = load_sd15_inpaint(device, sd_dtype)
 if ckpt_path and Path(ckpt_path).exists():
     try:
         with st.spinner("Loading generator..."):
@@ -299,6 +456,21 @@ else:
 tfm = build_transform(img_size)
 
 # ---------------------- Inference ---------------------- #
+
+def neutralize_hair_region(init_pil: Image.Image, soft_mask: np.ndarray, gray_level: float = 0.82) -> Image.Image:
+    """
+    先把髮區預處理成偏白灰，降低原圖顏色影響。
+    gray_level: 0~1，越大越接近白；建議 0.78~0.88
+    """
+    W, H = init_pil.size
+    if soft_mask.shape != (H, W):
+        soft_mask = cv2.resize(soft_mask, (W, H), interpolation=cv2.INTER_CUBIC)
+    base = np.array(init_pil.convert("RGB")).astype(np.float32) / 255.0
+    m = np.clip(soft_mask, 0.0, 1.0)[..., None]  # (H,W,1)
+    target = np.full_like(base, gray_level, dtype=np.float32)  # 灰白
+    mixed = base * (1.0 - m) + target * m
+    out = (np.clip(mixed, 0.0, 1.0) * 255.0).astype(np.uint8)
+    return Image.fromarray(out, mode="RGB")
 
 def _get_dtype(device: torch.device, mp: str) -> torch.dtype:
     if device.type == "cuda":
@@ -331,23 +503,107 @@ def infer_one_image(pil_img: Image.Image):
 
     # auto hair mask (always generated; guaranteed non-empty)
     # use parser's own device
+    # 產生髮絲遮罩（若分割不可靠，used_fallback=True）
     parser_dev = next(Parser.parameters()).device
-    mask01 = generate_hair_mask_bisenet(
-        pil_img, Parser, img_size=H, device=parser_dev, hair_ids=HAIR_IDS
+    mask01, used_fallback = generate_hair_mask_bisenet(
+        pil_img,
+        Parser,
+        img_size=H,
+        device=parser_dev,
+        hair_ids=[17]  # 可改成 [17, 13] 視權重而定
     )
+
+    # 羽化成軟遮罩，避免硬邊
+    soft_mask = feather_mask(mask01, k=11, sigma=4.0)
 
     # optional graying for 6/7/8/9
     if apply_graying:
+        # 產生軟遮罩：先略微膨脹避免漏邊，再羽化避免硬邊
+        mask_grow  = dilate_mask(mask01, k=9)
+        soft_mask  = feather_mask(mask_grow, k=21, sigma=7.0)
+
+        # 每個年齡組遞增的 Inpaint 參數（你可在側欄再做成可調）
+        grp = {
+            6: dict(
+                prompt="more gray hair, visible silver strands, natural, realistic, high detail, photorealistic hair texture",
+                strength=0.58, guidance=9.5, steps=38
+            ),
+            7: dict(
+                prompt="gray hair with white streaks, salt-and-pepper trending to white, natural, realistic, high detail, photorealistic hair texture",
+                strength=0.72, guidance=13.0, steps=40
+            ),
+            8: dict(
+                prompt="mostly white hair, silver-white, minimal remaining pigment, realistic, very high detail, finely detailed hair texture, photorealistic",
+                strength=0.86, guidance=15, steps=44
+            ),
+            9: dict(
+                prompt="pure white hair, snow-white, no visible pigment, realistic, ultra high detail, finely detailed hair texture, photorealistic",
+                strength=0.92, guidance=15, steps=48
+            ),
+        }
+        # 更嚴格的負向提示，避免回染與奇怪色偏
+        neg = (
+            "black hair, brown hair, blonde, red hair, colored hair, highlights, "
+            "green, blue, purple, saturated colors, cartoon, painting, watercolor, "
+            "lowres, artifacts, color bleed, unrealistic tint, overexposed skin"
+        )
+
+
         modified = []
+        warned_once = False
         for t_idx, t in enumerate(targets):
             img_t = transforms.ToPILImage()(Yv[t_idx])  # [0,1] PIL
             if t in (6, 7, 8, 9):
-                alpha = ALPHAS[t]
-                y_floor = YFLOORS[t]
-                img_t = apply_blend_to_white(img_t, mask01, alpha=alpha)
-                img_t = ensure_brightness_floor(img_t, mask01, target_Y=y_floor, max_extra=0.25)
-            modified.append(transforms.ToTensor()(img_t).clamp(0,1))
+                if SD15 is None or not use_sd15:
+                    # 備援：線性白化
+                    alpha = ALPHAS[t]; y_floor = YFLOORS[t]
+                    img_t = apply_blend_to_white(img_t, soft_mask, alpha=alpha)
+                    img_t = ensure_brightness_floor(img_t, soft_mask, target_Y=y_floor, max_extra=0.20)
+                else:
+                    # ★ 先將髮區預去色 → 灰白，增加可控性
+                    img_neutral = neutralize_hair_region(img_t, soft_mask, gray_level=0.94)
+
+                    # 一次 inpaint（更強參數）
+                    p = grp[t]
+                    gen_img, nsfw = sd15_inpaint_once(
+                        SD15, img_neutral, soft_mask,
+                        prompt=p["prompt"], negative_prompt=neg,
+                        steps=p["steps"], guidance=p["guidance"],
+                        strength=p["strength"], seed=seed + t,
+                    )
+
+                    # NSFW/黑圖回退
+                    if nsfw or is_nearly_black(gen_img):
+                        if not warned_once:
+                            st.warning("SD safety filter triggered on hair inpaint. Falling back to blended graying for this image.")
+                            warned_once = True
+                        alpha = ALPHAS[t]; y_floor = YFLOORS[t]
+                        gen_img = apply_blend_to_white(img_t, soft_mask, alpha=alpha)
+                        gen_img = ensure_brightness_floor(gen_img, soft_mask, target_Y=y_floor, max_extra=0.20)
+
+                    # ★ 8/9 再做第二段短 inpaint，完全拉白
+                    if t in (8, 9) and SD15 is not None and use_sd15:
+                        p2_prompt = "pure white hair, snow-white hair, no pigment, very high detail, realistic, photorealistic hair"
+                        gen_img2, nsfw2 = sd15_inpaint_once(
+                            SD15, gen_img, soft_mask,
+                            prompt=p2_prompt, negative_prompt=neg,
+                            steps=28, guidance=p["guidance"] + 0.5,
+                            strength=min(0.88 if t == 8 else 0.94, 0.96),
+                            seed=seed + 10_000 + t,
+                        )
+                        if not (nsfw2 or is_nearly_black(gen_img2)):
+                            gen_img = gen_img2  # 只在成功時採用二段式
+
+                    img_t = gen_img
+
+            # ★ 統一尺寸
+            if img_t.size != (W, H):
+                img_t = img_t.resize((W, H), Image.BICUBIC)
+            modified.append(transforms.ToTensor()(img_t).clamp(0, 1))
+
         Yv = torch.stack(modified, dim=0)
+
+
 
     grid = utils.make_grid(Yv, nrow=grid_nrow)  # [3,H',W']
     return grid, Yv
@@ -358,7 +614,7 @@ col_run, col_save = st.columns([1, 1])
 run_clicked = col_run.button("🚀 Run Inference", disabled=not (files and load_ok))
 clear_clicked = col_save.button("🧹 Clear Output")
 if clear_clicked:
-    st.experimental_rerun()
+    st.rerun()
 
 if run_clicked:
     if not files:

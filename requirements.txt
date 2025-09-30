@@ -6,3 +6,4 @@ ninja
 lmdb
 pytorch_lightning
 streamlit
+xformers
