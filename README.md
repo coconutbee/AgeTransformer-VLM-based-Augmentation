@@ -76,15 +76,13 @@ AgeTransformer-VLM-based-Augmentation/
 
 ### Checkpoints
 - Download the MoE age estimator[(link)](https://mega.nz/file/2U8lxRKJ#Z2KczVkP72AnvNawfK8tAGeNZknqrack3VGjbZZC6zM) and AgeTransformer pretrained weights from the Releases page and place them under `models/` directory.
+- Download the experts' weights and place them under `moe_age_estimator/checkpoints/`. MiVOLO[(link)](). ResNet50[(link)](). VGG16[(link)](). Janus-Pro[(link)](https://huggingface.co/deepseek-ai/Janus-Pro-7B).
 
 ## MoE Age Estimator
 - Experts: Janus-Pro (VLM-augmented), MiVOLO, ResNet50[(our previous work)](https://link.springer.com/chapter/10.1007/978-3-030-89131-2_27), VGG16[(our previous work)](https://www.ecva.net/papers/eccv_2022/papers_ECCV/papers/136720573.pdf).
 - Weighted aggregation uses gating scores with softmax normalization `w_i = softmax(g_i)`.
 - Final prediction is `age = sum_i(w_i * age_i)`.
 - Provides both CLI (`python moe_age_estimator/infer.py --input ...`) and batch API integration for dataset relabeling.
-
-## AgeTransformer Training
-1. Launch training, for example `python train.py`.
 
 ## Inference & Evaluation
 - Use `src/infer.py` to generate ten age-shifted images from a single input; specify `--ages` to override default anchors.
