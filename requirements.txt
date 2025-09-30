@@ -5,3 +5,4 @@ timm
 ninja
 lmdb
 pytorch_lightning
+streamlit
